@@ -6,20 +6,11 @@ open System.Diagnostics
 // Saiba mais sobre F# em http://fsharp.org
 // Veja o projeto 'F# Tutorial' para obter mais ajuda.
 
+//Tipos
 type Par = { X: float Matrix; Y: float Matrix }
 type Realizacao = { Acuracia:float; Confusao: float Matrix; W: float Matrix; Dados: Par list }
 
-//Função degrau
-let degrau u = 
-    if u > 0.0 then 1.0 else 0.0
-
-//Saída linear na forma de matriz
-let saida w x =
-    x * w |> Matrix.map degrau
-
-let erro w x y =
-    y - saida w x
-    
+//Utilitários
 let matrizLinha list =
     let v = (list: float seq) |> vector
     v.ToRowMatrix()
@@ -29,8 +20,22 @@ let naoZero m =
     let zero = DenseMatrix.zero<float> m.RowCount m.ColumnCount
     m <> zero
 
+//Funções Rede Perceptron
+let degrau u = 
+    if u > 0.0 then 1.0 else 0.0
+
+let saida w x =
+    x * w |> Matrix.map degrau
+
+let erro w x y =
+    y - saida w x
+
+//Matriz de pesos para a matriz linha "treinamento"
 let pesos treinamento =
+    //Máximo de épocas
     let maxN = 1000
+
+    //Próximo vetor de pesos (função w(n+1))
     let rec proximo t w e = 
         match t with
             | [] -> (w, e)
@@ -41,24 +46,25 @@ let pesos treinamento =
                     if e then e else e0 |> naoZero
                 proximo tail w1 (if e then e else temErro)
     
+    //Decide se os pesos ainda devem ser atualizados (por número de épocas e ausência de erros)
     let rec pesos w n =
         let (w1, e1) = proximo treinamento w false
         if e1 && n < maxN  then pesos w1 (n+1) else w1
     
     let w0 = DenseMatrix.randomStandard<float> treinamento.Head.X.ColumnCount 3
-        
+
+    //Inicia o treinamento
     pesos w0 0
 
 
 let realizacao dados =
     let confusao = DenseMatrix.zero 3 3
-
-    let dadosList = dados |> List.ofSeq
-
+    
     let treinamento = 
-        let n = dadosList |> List.length |> float |> (*) 0.8 |> int
-        dadosList |> List.take n
-    let teste = dadosList |> List.except treinamento
+        let n = dados |> List.length |> float |> (*) 0.8 |> int
+        dados |> List.take n
+
+    let teste = dados |> List.except treinamento
 
     let w = pesos treinamento
 
@@ -70,7 +76,7 @@ let realizacao dados =
             if classes.ContainsKey a then (confusao.[classes.[a], classes.[par.Y]] <- confusao.[classes.[a], classes.[par.Y]] + 1.0)
             )
         
-    { Acuracia = confusao.Diagonal().Sum() / float (teste |> Seq.length) ; Confusao = confusao; Dados = dadosList; W = w }
+    { Acuracia = confusao.Diagonal().Sum() / float (teste |> Seq.length) ; Confusao = confusao; Dados = dados; W = w }
 
 let sw = new Stopwatch()
 
@@ -88,7 +94,7 @@ let algoritmoIris =
 
     let realizacoes =
         [1..20] |>
-        Seq.map (fun _ -> realizacao (dados.SelectPermutation()))
+        Seq.map (fun _ -> realizacao (dados.SelectPermutation() |> List.ofSeq))
     
     let maior = 
         realizacoes |>
