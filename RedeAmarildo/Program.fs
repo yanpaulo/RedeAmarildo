@@ -1,7 +1,9 @@
 ﻿open FSharp.Data
-open MathNet.Numerics
+open MathNet.Numerics.Random
 open MathNet.Numerics.LinearAlgebra
 open System.Diagnostics
+open MathNet.Numerics.Distributions
+open MathNet.Numerics
 
 // Saiba mais sobre F# em http://fsharp.org
 // Veja o projeto 'F# Tutorial' para obter mais ajuda.
@@ -16,8 +18,7 @@ let matrizLinha list =
     v.ToRowMatrix()
 
 let naoZero m =
-    (m: float Matrix) |> ignore
-    let zero = DenseMatrix.zero<float> m.RowCount m.ColumnCount
+    let zero = DenseMatrix.zero<float> (m: float Matrix).RowCount m.ColumnCount
     m <> zero
 
 //Funções Rede Perceptron
@@ -42,9 +43,9 @@ let pesos treinamento =
             | par :: tail -> 
                 let e0 = erro w par.X par.Y
                 let w1 = w + 0.01 * par.X.Transpose() * e0
-                let temErro = 
-                    if e then e else e0 |> naoZero
-                proximo tail w1 (if e then e else temErro)
+                let temErro = e || (e0 |> naoZero)
+
+                proximo tail w1 temErro
     
     //Decide se os pesos ainda devem ser atualizados (por número de épocas e ausência de erros)
     let rec pesos w n =
@@ -88,7 +89,9 @@ let algoritmoIris =
     
     let parse s = s |> System.Double.Parse
 
-    let mapRow (row: CsvRow) = { X = row.Columns |> Array.take 4 |> Array.map parse |> matrizLinha; Y = classes.[row.["class"]] |> matrizLinha }
+    let parseRow (row: CsvRow) = row.Columns |> Seq.take 4 |> Seq.map parse |> List.ofSeq
+
+    let mapRow (row: CsvRow) = { X = 1.0 :: parseRow row |> matrizLinha; Y = classes.[row.["class"]] |> matrizLinha }
     
     let dados = db.Rows |> Seq.map mapRow
 
@@ -104,9 +107,52 @@ let algoritmoIris =
 
 sw.Stop()
 
+sw.Restart()
+
+let algoritmoCustom =
+    let samples = 10
+    let mapping x y =
+        [1.0 ; x; y] |> matrizLinha
+
+    let classe1 =
+        let x = Random.doubles samples |> Seq.map (fun n -> n + 1.0)
+        let y = Random.doubles samples |> Seq.map (fun n -> n + 1.0)
+        Seq.map2 mapping x y |>
+        Seq.map (fun x -> {X = x; Y = matrizLinha [1.0; 0.0; 0.0] }) |>
+        List.ofSeq
+    
+    let classe2 =
+        let x = Random.doubles samples |> Seq.map (fun n -> n + 3.0)
+        let y = Random.doubles samples |> Seq.map (fun n -> n + 1.0)
+        Seq.map2 mapping x y |>
+        Seq.map (fun x -> {X = x; Y = matrizLinha [0.0; 1.0; 0.0] }) |>
+        List.ofSeq
+
+    let classe3 =
+        let x = Random.doubles samples |> Seq.map (fun n -> n + 1.0)
+        let y = Random.doubles samples |> Seq.map (fun n -> n + 3.0)
+        Seq.map2 mapping x y |>
+        Seq.map (fun x -> {X = x; Y = matrizLinha [0.0; 0.0; 1.0] }) |>
+        List.ofSeq
+        
+    
+    let dados = classe1 @ classe2 @ classe3
+
+    let realizacoes =
+        [1..20] |>
+        Seq.map (fun _ -> realizacao (dados.SelectPermutation() |> List.ofSeq))
+    
+    let maior = 
+        realizacoes |>
+        Seq.maxBy (fun r -> r.Acuracia)
+    
+    maior
+
+sw.Stop()
+
 
 [<EntryPoint>]
 let main argv = 
-    printfn "%A" algoritmoIris
+    printfn "%A" algoritmoCustom
     printfn "Tempo: %d ms" sw.ElapsedMilliseconds
     0 // retornar um código de saída inteiro
