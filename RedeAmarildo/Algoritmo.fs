@@ -8,11 +8,10 @@ open MathNet.Numerics.LinearAlgebra
 open System.Diagnostics
 
 module Algoritmo =
-
     //Tipos
     type Par = { X: float Matrix; Y: float Matrix }
-    type Realizacao = { Acuracia:float; Confusao: float Matrix; W: float Matrix }
-    type ResultadoAlgoritmo = { Tempo: TimeSpan; Melhor: Realizacao; Dados: Par seq }
+    type Realizacao = { TaxaAcerto:float; Confusao: float Matrix; W: float Matrix }
+    type ResultadoAlgoritmo = { Acuracia: float; Tempo: TimeSpan; Melhor: Realizacao; Dados: Par seq; }
 
     //Utilitários
     let matrizLinha list =
@@ -35,8 +34,10 @@ module Algoritmo =
 
     //Matriz de pesos para a matriz linha "treinamento"
     let pesos treinamento =
+        (treinamento: Par list) |> ignore
+
         //Máximo de épocas
-        let maxN = 1000
+        let maxN = 2000
 
         //Próximo vetor de pesos (função w(n+1))
         let rec proximo t w e = 
@@ -44,14 +45,14 @@ module Algoritmo =
                 | [] -> (w, e)
                 | par :: tail -> 
                     let e0 = erro w par.X par.Y
-                    let w1 = w + 0.01 * par.X.Transpose() * e0
+                    let w1 = w + 0.05 * par.X.Transpose() * e0
                     let temErro = e || (e0 |> naoZero)
 
                     proximo tail w1 temErro
     
         //Decide se os pesos ainda devem ser atualizados (por número de épocas e ausência de erros)
         let rec pesos w n =
-            let (w1, e1) = proximo treinamento w false
+            let (w1, e1) = proximo (treinamento.SelectPermutation() |> List.ofSeq) w false
             if e1 && n < maxN  then pesos w1 (n+1) else w1
     
         let w0 = DenseMatrix.randomStandard<float> treinamento.Head.X.ColumnCount 3
@@ -79,7 +80,7 @@ module Algoritmo =
                 if classes.ContainsKey a then (confusao.[classes.[a], classes.[par.Y]] <- confusao.[classes.[a], classes.[par.Y]] + 1.0)
                 )
         
-        { Acuracia = confusao.Diagonal().Sum() / float (teste |> Seq.length) ; Confusao = confusao; W = w }
+        { TaxaAcerto = confusao.Diagonal().Sum() / float (teste |> Seq.length) ; Confusao = confusao; W = w }
 
     let sw = new Stopwatch()
 
@@ -102,10 +103,16 @@ module Algoritmo =
     
         let maior = 
             realizacoes |>
-            Seq.maxBy (fun r -> r.Acuracia)
+            Seq.maxBy (fun r -> r.TaxaAcerto)
+        
+        let media =
+            realizacoes |>
+            Seq.averageBy (fun r -> r.TaxaAcerto)
+        
+        //printfn "%A %A" media maior
 
         sw.Stop()
-        { Tempo = sw.Elapsed; Melhor = maior; Dados = dados }
+        { Acuracia = media; Tempo = sw.Elapsed; Melhor = maior; Dados = dados; }
 
 
 
@@ -145,7 +152,11 @@ module Algoritmo =
     
         let maior = 
             realizacoes |>
-            Seq.maxBy (fun r -> r.Acuracia)
+            Seq.maxBy (fun r -> r.TaxaAcerto)
+
+        let media =
+            realizacoes |>
+            Seq.averageBy(fun r -> r.TaxaAcerto)
     
         sw.Stop()
-        { Tempo = sw.Elapsed; Melhor = maior; Dados = dados }
+        { Acuracia = media; Tempo = sw.Elapsed; Melhor = maior; Dados = dados; }
