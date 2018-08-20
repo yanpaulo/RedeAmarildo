@@ -1,5 +1,6 @@
 ﻿namespace RedeAmarildo
 
+open System
 open FSharp.Data
 open MathNet.Numerics
 open MathNet.Numerics.Random
@@ -7,7 +8,6 @@ open MathNet.Numerics.LinearAlgebra
 open System.Diagnostics
 
 module Algoritmo =
-    open System
 
     //Tipos
     type Par = { X: float Matrix; Y: float Matrix }
@@ -82,7 +82,6 @@ module Algoritmo =
         { Acuracia = confusao.Diagonal().Sum() / float (teste |> Seq.length) ; Confusao = confusao; W = w }
 
     let sw = new Stopwatch()
-
 
     let algoritmoIris =
         sw.Start()

@@ -57,7 +57,7 @@
   <Import Project="$(FSharpTargetsPath)" />
   <ItemGroup>
     <Compile Include="AssemblyInfo.fs" />
-    <Compile Include="Program.fs" />
+    <Compile Include="Algoritmo.fs" />
     <None Include="App.config" />
     <None Include="iris.data">
       <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
