@@ -37,7 +37,7 @@ module Algoritmo =
         (treinamento: Par list) |> ignore
 
         //Máximo de épocas
-        let maxN = 2000
+        let maxN = 500
 
         //Próximo vetor de pesos (função w(n+1))
         let rec proximo t w e = 
@@ -46,8 +46,8 @@ module Algoritmo =
                 | par :: tail -> 
                     let e0 = erro w par.X par.Y
                     let w1 = w + 0.05 * par.X.Transpose() * e0
+                    
                     let temErro = e || (e0 |> naoZero)
-
                     proximo tail w1 temErro
     
         //Decide se os pesos ainda devem ser atualizados (por número de épocas e ausência de erros)
@@ -88,10 +88,20 @@ module Algoritmo =
         sw.Start()
         let db = CsvFile.Load("iris.data").Cache()
         let classes = dict["Iris-setosa", [1.0; 0.0; 0.0]; "Iris-versicolor", [0.0; 1.0; 0.0]; "Iris-virginica", [0.0; 0.0; 1.0]]
-    
-        let parse s = s |> System.Double.Parse
 
-        let parseRow (row: CsvRow) = row.Columns |> Seq.take 4 |> Seq.map parse |> List.ofSeq
+        let parse (s: string) = s.Replace(".", ",") |> System.Double.Parse
+
+        let normaliza x =
+            let parseRow (row: CsvRow) = row.Columns|> Seq.take 4 |> Seq.map parse
+            let valores = db.Rows |> Seq.collect parseRow
+            let min = valores |> Seq.min
+            let max = valores |> Seq.max
+
+            (x - min) / (max - min)
+    
+        let normaliza s = parse s |> normaliza
+
+        let parseRow (row: CsvRow) = row.Columns |> Seq.take 4 |> Seq.map normaliza |> List.ofSeq
 
         let mapRow (row: CsvRow) = { X = 1.0 :: parseRow row |> matrizLinha; Y = classes.[row.["class"]] |> matrizLinha }
     
@@ -99,7 +109,8 @@ module Algoritmo =
 
         let realizacoes =
             [1..20] |>
-            Seq.map (fun _ -> realizacao (dados.SelectPermutation() |> List.ofSeq))
+            Seq.map (fun _ -> realizacao (dados.SelectPermutation() |> List.ofSeq)) |>
+            List.ofSeq
     
         let maior = 
             realizacoes |>
