@@ -45,7 +45,7 @@ module Algoritmo =
                 | [] -> (w, e)
                 | par :: tail -> 
                     let e0 = erro w par.X par.Y
-                    let w1 = w + 0.05 * par.X.Transpose() * e0
+                    let w1 = w + 0.1 * par.X.Transpose() * e0
                     
                     let temErro = e || (e0 |> naoZero)
                     proximo tail w1 temErro
@@ -108,7 +108,7 @@ module Algoritmo =
         let dados = db.Rows |> Seq.map mapRow |> List.ofSeq
 
         let realizacoes =
-            [1..20] |>
+            [1..1] |>
             Seq.map (fun _ -> realizacao (dados.SelectPermutation() |> List.ofSeq)) |>
             List.ofSeq
     
